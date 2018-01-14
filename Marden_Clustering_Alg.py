@@ -182,6 +182,3 @@ class Clustering:
 				self.edges[e]["cluster"].update([self.seed])
 			else:
 				self.edges[e]["boundary"].update([self.seed])
-
-test = Clustering('edge_lists/zachary.csv')
-test.apply_alg()
