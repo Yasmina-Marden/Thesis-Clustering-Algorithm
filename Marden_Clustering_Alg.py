@@ -117,8 +117,6 @@ class Clustering:
 			self.adjs[self.seed]["clusters"].append(self.seed)
 			self.check_adj_nodes(self.seed, seed_adj, seed_adj)
 			self.sort_boundaries()
-			if self.seed in self.node_degrees:
-				del self.node_degrees[self.seed]
 			self.C = sorted(self.C)
 
 
@@ -182,3 +180,6 @@ class Clustering:
 				self.edges[e]["cluster"].update([self.seed])
 			else:
 				self.edges[e]["boundary"].update([self.seed])
+
+test = Clustering('edge_lists/zachary.csv')
+test.apply_alg()
