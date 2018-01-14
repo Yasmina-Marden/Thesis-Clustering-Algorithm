@@ -10,6 +10,7 @@ class Clustering:
 	checked = {}
 	clusters = {}
 	nodes = []
+	potential_boundaries = set([])
 	C = set([])
 	L = []
 
@@ -56,8 +57,8 @@ class Clustering:
 
 			self.edges[edge] = {}
 			self.edges[edge]["weight"] = weight
-			self.edges[edge]["boundary"] = []
-			self.edges[edge]["cluster"] = []
+			self.edges[edge]["boundary"] = set([])
+			self.edges[edge]["cluster"] = set([])
 
 			self.add_to_adjs(edge[0], edge[1], weight)
 			self.add_to_adjs(edge[1], edge[0], weight)
@@ -106,17 +107,20 @@ class Clustering:
 		self.degree_sort()
 
 		while self.L:
+			self.potential_boundaries = set([])
 			self.checked = dict(original_checked)
 			self.seed = self.L[0]
 			seed_adj = self.adjs[self.seed]["adj_nodes"]
 			self.C = set([self.seed])
-			self.checked[self.seed] = 'Y'
+			self.checked[self.seed] = 'YIC'
 			self.L = self.L[1:]
 			self.adjs[self.seed]["clusters"].append(self.seed)
 			self.check_adj_nodes(self.seed, seed_adj, seed_adj)
+			self.sort_boundaries()
 			if self.seed in self.node_degrees:
 				del self.node_degrees[self.seed]
 			self.C = sorted(self.C)
+
 
 	#returns a tuple edge from input nodes n1 and n2
 	def make_edge(self, n1, n2):
@@ -130,14 +134,16 @@ class Clustering:
 	#checked.
 	def check_adj_nodes(self, current_node, match_nodes, current_adj_nodes):
 		for n in current_adj_nodes:
-			e = self.make_edge(current_node, n)
 			if self.checked[n]=='N':
-				self.checked[n] = 'Y'
 				score = self.find_score(match_nodes, self.adjs[n]["adj_nodes"])
-				if score>=0:
-					if n!=self.seed:
-						self.C.update([n])
-						self.adjs[n]["clusters"].append(self.seed)
+				if score<0:
+					#Yes Not In Cluster
+					self.checked[n]='YNIC'
+				else:
+					#Yes In Cluster
+					self.checked[n]='YIC'
+					self.C.update([n])
+					self.adjs[n]["clusters"].append(self.seed)
 					if score>0:
 						self.check_adj_nodes(n, match_nodes, self.adjs[n]["adj_nodes"])
 						if n in self.node_degrees and self.node_degrees[n]!=self.node_degrees[self.seed]:
@@ -145,7 +151,19 @@ class Clustering:
 							self.L.remove(n)
 					else:
 						for n2 in self.adjs[n]["adj_nodes"]:
-							e2  = self.make_edge(n, n2)
+							e = self.make_edge(n, n2)
+							check = self.checked[n2]
+							if check=='YIC':
+								self.edges[e]["cluster"].update([self.seed])
+							elif check=='YNIC':
+								self.edges[e]["boundary"].update([self.seed])
+							else:
+								self.potential_boundaries.update([e])
+			e = self.make_edge(current_node, n)
+			if self.seed in self.adjs[n]["clusters"]:
+				self.edges[e]["cluster"].update([self.seed])
+			else:
+				self.edges[e]["boundary"].update([self.seed])
 
 	def find_score(self, match_nodes, adj_nodes):
 		score = 0
@@ -157,3 +175,13 @@ class Clustering:
 			else:
 				score-=adj_nodes[n]
 		return score
+
+	def sort_boundaries(self):
+		for e in self.potential_boundaries:
+			if self.checked[e[0]]=='YIC' and self.checked[e[1]]=='YIC':
+				self.edges[e]["cluster"].update([self.seed])
+			else:
+				self.edges[e]["boundary"].update([self.seed])
+
+test = Clustering('edge_lists/zachary.csv')
+test.apply_alg()
