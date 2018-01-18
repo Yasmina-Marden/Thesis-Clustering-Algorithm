@@ -1,10 +1,13 @@
 ##Yasmina Marden
 ##Thesis clustering algorithm implementation
+import itertools
+import math
 
 class Clustering:
 
 	seed = ''
 	edges = {}
+	new_edges = {}
 	adjs = {}
 	node_degrees = {}
 	checked = {}
@@ -54,22 +57,36 @@ class Clustering:
 				weight = 1.0
 			edge.sort()
 			edge = tuple(edge)
-
-			self.edges[edge] = {}
-			self.edges[edge]["weight"] = weight
-			self.edges[edge]["boundary"] = set([])
-			self.edges[edge]["cluster"] = set([])
-
+			self.add_to_edges('orig', edge, weight)
 			self.add_to_adjs(edge[0], edge[1], weight)
 			self.add_to_adjs(edge[1], edge[0], weight)
 
 		for node in self.adjs:
 			self.node_degrees[node] = self.adjs[node]["degree"]
 
+	def add_to_edges(self, which_edges, e, w):
+		if which_edges=='orig':
+			edges = self.edges
+		elif which_edges=='new':
+			edges = self.new_edges
+		else:
+			print("Invalid edges dictionary specification.")
+			return
+		if e in edges:
+			edges[e]["weight"] = edges[e]["weight"]+w
+		else:
+			edges[e] = {}
+			edges[e]["weight"] = w
+			edges[e]["boundary"] = set([])
+			edges[e]["cluster"] = set([])
+
 	#adds n2 to the adjacency list adj_nodes of n1 in adjs
 	def add_to_adjs(self, n1, n2, w):
 		if n1 in self.adjs:
-			self.adjs[n1]["adj_nodes"][n2] = w
+			if n2 in self.adjs[n1]["adj_nodes"]:
+				self.adjs[n1]["adj_nodes"][n2]+=w
+			else:
+				self.adjs[n1]["adj_nodes"][n2] = w
 			self.adjs[n1]["degree"] += w
 		else:
 			self.adjs[n1] = {}
@@ -82,7 +99,13 @@ class Clustering:
 		if self.read_file()==0:
 			return
 		self.find_clusters()
+		self.find_new_graph_info()
 
+	def total_weight(self):
+		total_weight = 0
+		for e in self.edges:
+			total_weight+=self.edges[e]["weight"]
+		return total_weight
 	#sorts nodes from highest to lowest node degree within the list L
 	def degree_sort(self):
 		degrees = {}
@@ -180,6 +203,38 @@ class Clustering:
 				self.edges[e]["cluster"].update([self.seed])
 			else:
 				self.edges[e]["boundary"].update([self.seed])
+
+	def find_new_graph_info(self):
+		self.new_edges = {}
+		self.adjs = {}
+		for e in self.edges:
+			cluster_list = self.edges[e]["cluster"]
+			boundary_list = self.edges[e]["boundary"]
+
+			cluster_count = len(cluster_list)
+			boundary_count = len(boundary_list)
+			if boundary_count>2:
+				boundary_factorial = math.factorial(boundary_count)/(2*math.factorial(boundary_count-2))
+			elif boundary_count==2:
+				boundary_factorial = 1
+			else:
+				boundary_factorial = 0
+			w = self.edges[e]["weight"]/(cluster_count + cluster_count*boundary_count + boundary_factorial)
+			for n1 in cluster_list:
+				e = self.make_edge(n1, n1)
+				self.add_to_edges('new', e, w)
+				self.add_to_adjs(n1, n1, w)
+				for n2 in boundary_list:
+					e = self.make_edge(n1, n2)
+					self.add_to_edges('new', e, w)
+					self.add_to_adjs(n1, n2, w)
+			
+			for e in itertools.combinations(boundary_list,2):
+				self.add_to_adjs(e[0], e[1], w)
+				self.add_to_adjs(e[1], e[0], w)
+				self.add_to_edges('new', e, w)
+
+		self.edges = self.new_edges
 
 test = Clustering('edge_lists/zachary.csv')
 test.apply_alg()
