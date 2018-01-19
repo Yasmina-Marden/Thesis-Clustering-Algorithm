@@ -98,14 +98,22 @@ class Clustering:
 	def apply_alg(self):
 		if self.read_file()==0:
 			return
-		self.find_clusters()
-		self.find_new_graph_info()
+		orig_clusters = {}
+		change = True
+		while change:
+			self.find_clusters()
+			if(len(self.clusters)>1 and orig_clusters!=self.clusters):
+				self.find_new_graph_info()
+				orig_clusters = self.clusters
+			else:
+				change = False
 
 	def total_weight(self):
 		total_weight = 0
 		for e in self.edges:
 			total_weight+=self.edges[e]["weight"]
 		return total_weight
+
 	#sorts nodes from highest to lowest node degree within the list L
 	def degree_sort(self):
 		degrees = {}
@@ -124,6 +132,7 @@ class Clustering:
 
 	#iteratively finds a seed and its corresponding cluster until L is empty
 	def find_clusters(self):
+		self.clusters = {}
 		original_checked = {}
 		for n in self.adjs:
 			original_checked[n] = 'N'
@@ -141,6 +150,7 @@ class Clustering:
 			self.check_adj_nodes(self.seed, seed_adj, seed_adj)
 			self.sort_boundaries()
 			self.C = sorted(self.C)
+			self.clusters[tuple(self.C)] = self.seed
 
 
 	#returns a tuple edge from input nodes n1 and n2
@@ -230,11 +240,12 @@ class Clustering:
 					self.add_to_adjs(n1, n2, w)
 			
 			for e in itertools.combinations(boundary_list,2):
+				e = tuple(sorted(e))
 				self.add_to_adjs(e[0], e[1], w)
 				self.add_to_adjs(e[1], e[0], w)
 				self.add_to_edges('new', e, w)
 
 		self.edges = self.new_edges
 
-test = Clustering('edge_lists/zachary.csv')
+test = Clustering('edge_lists/square.csv')
 test.apply_alg()
