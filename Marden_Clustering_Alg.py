@@ -2,6 +2,8 @@
 ##Thesis clustering algorithm implementation
 import itertools
 import math
+import subprocess
+import csv
 
 class Clustering:
 
@@ -100,13 +102,42 @@ class Clustering:
 			return
 		orig_clusters = {}
 		change = True
+		iteration = 1
 		while change:
 			self.find_clusters()
+			current_path = self.path[:len(self.path)-4]+'_'+str(iteration)+'.csv'
+			cluster_path = current_path[:len(current_path)-4]+'_clusters.csv'
 			if(len(self.clusters)>1 and orig_clusters!=self.clusters):
 				self.find_new_graph_info()
 				orig_clusters = self.clusters
+				iteration+=1
+				self.create_edge_list_csv(current_path)
+				self.create_clusters_csv(cluster_path)
+				self.display(current_path, cluster_path)
 			else:
 				change = False
+				if iteration==1:
+					self.display(current_path, cluster_path)
+
+	def create_edge_list_csv(self, path):
+		with open(path,'w') as f:
+			writer = csv.writer(f)
+			for e in self.edges:
+				writer.writerow(e+(self.edges[e]["weight"],))
+
+	def create_clusters_csv(self, path):
+		with open(path,'w') as f:
+			writer = csv.writer(f)
+			for c in self.clusters:
+				writer.writerow(c)
+
+	def display(self, network_path, cluster_path):
+		args = [network_path, cluster_path]
+		result = subprocess.check_output(['Rscript','display_clustered_network.R']+args)
+		if result=='Success':
+			print("\nNetwork cluster images successfully created and saved!\n")
+		else:
+			print("\nError occured creating network cluster images.\n")
 
 	def total_weight(self):
 		total_weight = 0
@@ -247,5 +278,5 @@ class Clustering:
 
 		self.edges = self.new_edges
 
-test = Clustering('edge_lists/square.csv')
+test = Clustering('edge_lists/square3.csv')
 test.apply_alg()
