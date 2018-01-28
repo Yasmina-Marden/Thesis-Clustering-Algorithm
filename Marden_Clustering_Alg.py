@@ -13,7 +13,8 @@ class Clustering:
 	adjs = {}
 	node_degrees = {}
 	checked = {}
-	clusters = {}
+	all_clusters = {}
+	current_clusters = {}
 	nodes = []
 	potential_boundaries = set([])
 	C = set([])
@@ -66,6 +67,8 @@ class Clustering:
 		for node in self.adjs:
 			self.node_degrees[node] = self.adjs[node]["degree"]
 
+	#adds edge e with weight w to self.edges if which_edges is 'orig', to
+	#self.new_edges if which_edges is 'new', or displays an error message
 	def add_to_edges(self, which_edges, e, w):
 		if which_edges=='orig':
 			edges = self.edges
@@ -97,27 +100,45 @@ class Clustering:
 			self.adjs[n1]["degree"] = w
 			self.adjs[n1]["clusters"] = []
 
-	def apply_alg(self):
+	def apply_alg(self, display):
 		if self.read_file()==0:
 			return
 		orig_clusters = {}
 		change = True
 		iteration = 1
 		while change:
-			self.find_clusters()
-			current_path = self.path[:len(self.path)-4]+'_'+str(iteration)+'.csv'
-			cluster_path = current_path[:len(current_path)-4]+'_clusters.csv'
-			if(len(self.clusters)>1 and orig_clusters!=self.clusters):
+			self.all_clusters[iteration] = {}
+			self.find_clusters(iteration)
+			if(len(self.current_clusters)>1 and orig_clusters!=self.current_clusters):
 				self.find_new_graph_info()
-				orig_clusters = self.clusters
+				orig_clusters = self.current_clusters
 				iteration+=1
-				self.create_edge_list_csv(current_path)
-				self.create_clusters_csv(cluster_path)
-				self.display(current_path, cluster_path)
 			else:
 				change = False
-				if iteration==1:
-					self.display(current_path, cluster_path)
+		self.unfold_clusters()
+		if display:
+			self.display()
+		return self.all_clusters
+
+	def unfold_clusters(self):
+		iteration = 2
+		while iteration in self.all_clusters:
+			for seed in self.all_clusters[iteration]:
+				cluster = tuple()
+				for n in self.all_clusters[iteration][seed]:
+					cluster = cluster+self.all_clusters[iteration-1][n]
+				self.all_clusters[iteration][seed] = cluster
+			iteration+=1
+
+	#creates a folder within the current directory of each iteration's clustering
+	#with a separate image saved for each cluster
+	def display(self):
+		iteration = 1
+		while iteration in self.all_clusters:
+			cluster_path = self.path[:len(self.path)-4]+'_'+str(iteration)+"_clusters.csv"
+			self.create_clusters_csv(cluster_path, iteration)
+			self.plot(self.path, cluster_path, iteration)
+			iteration+=1
 
 	def create_edge_list_csv(self, path):
 		with open(path,'w') as f:
@@ -125,20 +146,22 @@ class Clustering:
 			for e in self.edges:
 				writer.writerow(e+(self.edges[e]["weight"],))
 
-	def create_clusters_csv(self, path):
+	def create_clusters_csv(self, path, iteration):
 		with open(path,'w') as f:
 			writer = csv.writer(f)
-			for c in self.clusters:
-				writer.writerow(c)
+			for seed in self.all_clusters[iteration]:
+				writer.writerow(self.all_clusters[iteration][seed])
 
-	def display(self, network_path, cluster_path):
-		args = [network_path, cluster_path]
-		result = subprocess.check_output(['Rscript','display_clustered_network.R']+args)
-		if result=='Success':
-			print("\nNetwork cluster images successfully created and saved!\n")
-		else:
-			print("\nError occured creating network cluster images.\n")
-
+	#plots a single iteration's clustering in R
+	def plot(self, network_path, cluster_path, iteration):
+		length = len(network_path)
+		for i in range(length,0,-1):
+			if network_path[i-1]=='/':
+				network_name = network_path[i:length-4]
+				break
+		args = [network_name, network_path, cluster_path, str(iteration)]
+		subprocess.check_output(['Rscript','display_clustered_network.R']+args)
+		
 	def total_weight(self):
 		total_weight = 0
 		for e in self.edges:
@@ -162,8 +185,8 @@ class Clustering:
 			self.L.extend(degrees[deg])
 
 	#iteratively finds a seed and its corresponding cluster until L is empty
-	def find_clusters(self):
-		self.clusters = {}
+	def find_clusters(self, iteration):
+		self.current_clusters = {}
 		original_checked = {}
 		for n in self.adjs:
 			original_checked[n] = 'N'
@@ -180,8 +203,9 @@ class Clustering:
 			self.adjs[self.seed]["clusters"].append(self.seed)
 			self.check_adj_nodes(self.seed, seed_adj, seed_adj)
 			self.sort_boundaries()
-			self.C = sorted(self.C)
-			self.clusters[tuple(self.C)] = self.seed
+			self.C = tuple(sorted(self.C))
+			self.current_clusters[self.C] = self.seed
+			self.all_clusters[iteration][self.seed] = self.C
 
 
 	#returns a tuple edge from input nodes n1 and n2
@@ -206,21 +230,22 @@ class Clustering:
 					self.checked[n]='YIC'
 					self.C.update([n])
 					self.adjs[n]["clusters"].append(self.seed)
-					if score>0:
-						self.check_adj_nodes(n, match_nodes, self.adjs[n]["adj_nodes"])
-						if n in self.node_degrees and self.node_degrees[n]!=self.node_degrees[self.seed]:
-							del self.node_degrees[n]
-							self.L.remove(n)
-					else:
-						for n2 in self.adjs[n]["adj_nodes"]:
-							e = self.make_edge(n, n2)
-							check = self.checked[n2]
-							if check=='YIC':
-								self.edges[e]["cluster"].update([self.seed])
-							elif check=='YNIC':
-								self.edges[e]["boundary"].update([self.seed])
-							else:
-								self.potential_boundaries.update([e])
+				#if score>0:
+					self.check_adj_nodes(n, match_nodes, self.adjs[n]["adj_nodes"])
+					#if n in self.node_degrees and self.node_degrees[n]!=self.node_degrees[self.seed]:
+					if n in self.node_degrees:
+						del self.node_degrees[n]
+						self.L.remove(n)
+				#else:
+					for n2 in self.adjs[n]["adj_nodes"]:
+						e = self.make_edge(n, n2)
+						check = self.checked[n2]
+						if check=='YIC':
+							self.edges[e]["cluster"].update([self.seed])
+						elif check=='YNIC':
+							self.edges[e]["boundary"].update([self.seed])
+						else:
+							self.potential_boundaries.update([e])
 			e = self.make_edge(current_node, n)
 			if self.seed in self.adjs[n]["clusters"]:
 				self.edges[e]["cluster"].update([self.seed])
@@ -233,7 +258,8 @@ class Clustering:
 			if n in match_nodes:
 				score+=adj_nodes[n]
 			elif n==self.seed:
-				score+=2*adj_nodes[n]
+				#score+=2*adj_nodes[n]
+				score+=adj_nodes[n]
 			else:
 				score-=adj_nodes[n]
 		return score
@@ -279,4 +305,4 @@ class Clustering:
 		self.edges = self.new_edges
 
 test = Clustering('edge_lists/square3.csv')
-test.apply_alg()
+test.apply_alg(True)
