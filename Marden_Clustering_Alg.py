@@ -106,39 +106,50 @@ class Clustering:
 		orig_clusters = {}
 		change = True
 		iteration = 1
+		path_start = self.path[:len(self.path)-4]
+		current_path = self.path
 		while change:
 			self.all_clusters[iteration] = {}
 			self.find_clusters(iteration)
-			if(len(self.current_clusters)>1 and orig_clusters!=self.current_clusters):
-				self.find_new_graph_info()
-				orig_clusters = self.current_clusters
-				iteration+=1
-			else:
+			self.find_new_graph_info()
+			orig_clusters = self.current_clusters
+			current_path = path_start+'_'+str(iteration+1)+"_edge_list.csv"
+			self.create_edge_list_csv(current_path)
+			current_cluster_path = path_start+'_'+str(iteration)+"_clusters.csv"
+			self.create_clusters_csv(current_cluster_path, iteration)
+			iteration+=1
+			if len(self.current_clusters)<=1:
 				change = False
-		self.unfold_clusters()
+				iteration-=1
+		self.unfold_clusters(path_start)
 		if display:
-			self.display()
+			self.display(path_start, iteration)
 		return self.all_clusters
 
-	def unfold_clusters(self):
+	def unfold_clusters(self, path_start):
+		current_cluster_path = self.path
 		iteration = 2
 		while iteration in self.all_clusters:
+			current_cluster_path = path_start+'_'+str(iteration)+'_clusters.csv'
 			for seed in self.all_clusters[iteration]:
 				cluster = tuple()
 				for n in self.all_clusters[iteration][seed]:
 					cluster = cluster+self.all_clusters[iteration-1][n]
 				self.all_clusters[iteration][seed] = cluster
+			self.create_clusters_csv(current_cluster_path, iteration)
 			iteration+=1
+		self.create_clusters_csv(path_start+'_1_clusters.csv', 1)
 
 	#creates a folder within the current directory of each iteration's clustering
 	#with a separate image saved for each cluster
-	def display(self):
-		iteration = 1
-		while iteration in self.all_clusters:
-			cluster_path = self.path[:len(self.path)-4]+'_'+str(iteration)+"_clusters.csv"
-			self.create_clusters_csv(cluster_path, iteration)
-			self.plot(self.path, cluster_path, iteration)
-			iteration+=1
+	def display(self, path, max_iteration):
+		for i in range(len(path),0,-1):
+			if path[i-1]=='/':
+				network_name = path[i:]
+				basic_path = path[:i]
+				break
+		args = [basic_path, network_name, self.path, str(max_iteration)]
+		subprocess.check_output(['Rscript','display_clustered_network.R']+args)
 
 	def create_edge_list_csv(self, path):
 		with open(path,'w') as f:
@@ -151,17 +162,7 @@ class Clustering:
 			writer = csv.writer(f)
 			for seed in self.all_clusters[iteration]:
 				writer.writerow(self.all_clusters[iteration][seed])
-
-	#plots a single iteration's clustering in R
-	def plot(self, network_path, cluster_path, iteration):
-		length = len(network_path)
-		for i in range(length,0,-1):
-			if network_path[i-1]=='/':
-				network_name = network_path[i:length-4]
-				break
-		args = [network_name, network_path, cluster_path, str(iteration)]
-		subprocess.check_output(['Rscript','display_clustered_network.R']+args)
-		
+	
 	def total_weight(self):
 		total_weight = 0
 		for e in self.edges:
@@ -230,13 +231,10 @@ class Clustering:
 					self.checked[n]='YIC'
 					self.C.update([n])
 					self.adjs[n]["clusters"].append(self.seed)
-				#if score>0:
 					self.check_adj_nodes(n, match_nodes, self.adjs[n]["adj_nodes"])
-					#if n in self.node_degrees and self.node_degrees[n]!=self.node_degrees[self.seed]:
 					if n in self.node_degrees:
 						del self.node_degrees[n]
 						self.L.remove(n)
-				#else:
 					for n2 in self.adjs[n]["adj_nodes"]:
 						e = self.make_edge(n, n2)
 						check = self.checked[n2]
@@ -258,7 +256,6 @@ class Clustering:
 			if n in match_nodes:
 				score+=adj_nodes[n]
 			elif n==self.seed:
-				#score+=2*adj_nodes[n]
 				score+=adj_nodes[n]
 			else:
 				score-=adj_nodes[n]
@@ -304,5 +301,5 @@ class Clustering:
 
 		self.edges = self.new_edges
 
-test = Clustering('edge_lists/square3.csv')
-test.apply_alg(True)
+test = Clustering('data/zachary.csv')
+test.apply_alg(False)
