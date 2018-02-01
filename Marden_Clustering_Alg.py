@@ -42,7 +42,6 @@ class Clustering:
 			self.read_data(data)
 
 	def read_csv_file(self):
-		import csv
 		with open(self.path, 'rU') as f:
 			data = csv.reader(f)
 			self.read_data(data)
@@ -113,8 +112,6 @@ class Clustering:
 			self.find_clusters(iteration)
 			self.find_new_graph_info()
 			orig_clusters = self.current_clusters
-			current_path = path_start+'_'+str(iteration+1)+"_edge_list.csv"
-			self.create_edge_list_csv(current_path)
 			current_cluster_path = path_start+'_'+str(iteration)+"_clusters.csv"
 			self.create_clusters_csv(current_cluster_path, iteration)
 			iteration+=1
@@ -151,23 +148,11 @@ class Clustering:
 		args = [basic_path, network_name, self.path, str(max_iteration)]
 		subprocess.check_output(['Rscript','display_clustered_network.R']+args)
 
-	def create_edge_list_csv(self, path):
-		with open(path,'w') as f:
-			writer = csv.writer(f)
-			for e in self.edges:
-				writer.writerow(e+(self.edges[e]["weight"],))
-
 	def create_clusters_csv(self, path, iteration):
 		with open(path,'w') as f:
 			writer = csv.writer(f)
 			for seed in self.all_clusters[iteration]:
 				writer.writerow(self.all_clusters[iteration][seed])
-	
-	def total_weight(self):
-		total_weight = 0
-		for e in self.edges:
-			total_weight+=self.edges[e]["weight"]
-		return total_weight
 
 	#sorts nodes from highest to lowest node degree within the list L
 	def degree_sort(self):
