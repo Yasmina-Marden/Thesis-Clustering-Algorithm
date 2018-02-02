@@ -1,4 +1,5 @@
-#Thesis Clustering Algorithm
+Thesis Clustering Algorithm
+==============
 
 ##Overview
 
