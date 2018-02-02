@@ -2,10 +2,13 @@ library(igraph)
 library(RColorBrewer)
 
 args <- commandArgs(trailingOnly = TRUE)
-path <- args[1]
-net_file_name <- args[2]
-net_file_path <- args[3]
-max_iteration <- suppressWarnings(as.numeric(args[4]))
+work_dir <- args[1]
+path <- args[2]
+net_file_name <- args[3]
+net_file_path <- args[4]
+max_iteration <- suppressWarnings(as.numeric(args[5]))
+
+setwd(work_dir)
 
 ##Creates the network g
 data <- read.csv(net_file_path, header=FALSE, stringsAsFactors = FALSE, colClasses = c("character"))
