@@ -5,11 +5,13 @@ Python implementation of clustering algorithm I designed as part of my undergrad
 Overview
 --------------
 The algorithm is an ad-hoc, hierarchical clustering algorithm that allows overlap between clusters. It works in iterations, where each iteration represents a level of the clustering hierarchy. During an iteration, 
+H~2~O
 
 Pseudocode
 --------------
 ```
 MardenClusteringAlg(G~orig~):
+H~2~O
   var num = number;
   IF ()
     THEN;
