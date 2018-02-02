@@ -1,6 +1,8 @@
 Thesis Clustering Algorithm
 ==============
 
-##Overview
+Overview
+--------------
 
-##Pseudocode
+Pseudocode
+--------------
