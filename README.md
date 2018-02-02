@@ -8,11 +8,12 @@ The algorithm is an ad-hoc, hierarchical clustering algorithm that allows overla
 
 Pseudocode
 --------------
-
-MardenClusteringAlg(G <sup>orig</sup> ):
+<code>
+MardenClusteringAlg(G<sub>orig</sub> ):
   var num = number;
   IF ()
     THEN;
     ELSE;
   ENDIF;
 END.
+  </code>
