@@ -19,15 +19,19 @@ class Clustering:
 	potential_boundaries = set([])
 	C = set([])
 	L = []
+	to_remove = set([])
 
 	def __init__(self, path):
 		self.path = path
 
 	#reads file by calling read function that corresponds to file type
 	def read_file(self):
-		if self.path[len(self.path)-3:]=='txt':
+		length = len(self.path)
+		if self.path[length-3:]=='txt':
 			self.read_txt_file()
-		elif self.path[len(self.path)-3:]=='csv':
+			self.path = self.path[:length-4]+'.csv'
+			self.create_edge_list_csv(self.path)
+		elif self.path[length-3:]=='csv':
 			self.read_csv_file()
 		else:
 			print("Sorry, txt or csv files only.")
@@ -154,6 +158,12 @@ class Clustering:
 			for seed in self.all_clusters[iteration]:
 				writer.writerow(self.all_clusters[iteration][seed])
 
+	def create_edge_list_csv(self, path):
+		with open(path,'w') as f:
+			writer = csv.writer(f)
+			for e in self.edges:
+				writer.writerow(e+(self.edges[e]["weight"],))
+
 	#sorts nodes from highest to lowest node degree within the list L
 	def degree_sort(self):
 		degrees = {}
@@ -193,7 +203,6 @@ class Clustering:
 			self.current_clusters[self.C] = self.seed
 			self.all_clusters[iteration][self.seed] = self.C
 
-
 	#returns a tuple edge from input nodes n1 and n2
 	def make_edge(self, n1, n2):
 		edge = [n1, n2]
@@ -217,8 +226,8 @@ class Clustering:
 					self.C.update([n])
 					self.adjs[n]["clusters"].append(self.seed)
 					self.check_adj_nodes(n, match_nodes, self.adjs[n]["adj_nodes"])
-					if n in self.node_degrees:
-						del self.node_degrees[n]
+					self.to_remove.update([n])
+					if n in self.L:
 						self.L.remove(n)
 					for n2 in self.adjs[n]["adj_nodes"]:
 						e = self.make_edge(n, n2)
@@ -285,6 +294,9 @@ class Clustering:
 				self.add_to_edges('new', e, w)
 
 		self.edges = self.new_edges
+		self.node_degrees = {}
+		for n in self.adjs:
+			self.node_degrees[n] = self.adjs[n]["degree"]
 
-test = Clustering('data/zachary.csv')
-test.apply_alg(False)
+test = Clustering('data/facebook_edges.csv')
+test.apply_alg(True)
