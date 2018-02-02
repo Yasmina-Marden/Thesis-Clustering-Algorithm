@@ -4,6 +4,7 @@ import itertools
 import math
 import subprocess
 import csv
+import os
 
 class Clustering:
 
@@ -20,9 +21,11 @@ class Clustering:
 	C = set([])
 	L = []
 	to_remove = set([])
+	work_dir = ''
 
 	def __init__(self, path):
 		self.path = path
+		self.work_dir = os.path.dirname(os.path.abspath(__file__))
 
 	#reads file by calling read function that corresponds to file type
 	def read_file(self):
@@ -149,7 +152,7 @@ class Clustering:
 				network_name = path[i:]
 				basic_path = path[:i]
 				break
-		args = [basic_path, network_name, self.path, str(max_iteration)]
+		args = [self.work_dir, basic_path, network_name, self.path, str(max_iteration)]
 		subprocess.check_output(['Rscript','display_clustered_network.R']+args)
 
 	def create_clusters_csv(self, path, iteration):
@@ -298,5 +301,5 @@ class Clustering:
 		for n in self.adjs:
 			self.node_degrees[n] = self.adjs[n]["degree"]
 
-test = Clustering('data/facebook_edges.csv')
+test = Clustering('data/zachary.csv')
 test.apply_alg(True)
