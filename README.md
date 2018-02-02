@@ -9,7 +9,7 @@ The algorithm is an ad-hoc, hierarchical clustering algorithm that allows overla
 Pseudocode
 --------------
 ```
-PROGRAM Name:
+MardenClusteringAlg(G_(orig)):
   var num = number;
   IF ()
     THEN;
