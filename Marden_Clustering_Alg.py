@@ -8,24 +8,22 @@ import os
 
 class Clustering:
 
-	seed = ''
-	edges = {}
-	new_edges = {}
-	adjs = {}
-	node_degrees = {}
-	checked = {}
-	all_clusters = {}
-	current_clusters = {}
-	nodes = []
-	potential_boundaries = set([])
-	C = set([])
-	L = []
-	to_remove = set([])
-	work_dir = ''
-
 	def __init__(self, path):
 		self.path = path
 		self.work_dir = os.path.dirname(os.path.abspath(__file__))
+		self.seed = ''
+		self.edges = {}
+		self.new_edges = {}
+		self.adjs = {}
+		self.node_degrees = {}
+		self.checked = {}
+		self.all_clusters = {}
+		self.current_clusters = {}
+		self.nodes = []
+		self.potential_boundaries = set([])
+		self.C = set([])
+		self.L = []
+		self.to_remove = set([])
 
 	#reads file by calling read function that corresponds to file type
 	def read_file(self):
@@ -47,11 +45,13 @@ class Clustering:
 			data = f.read()
 			data = data.split('\n')
 			self.read_data(data)
+		f.close()
 
 	def read_csv_file(self):
 		with open(self.path, 'rU') as f:
 			data = csv.reader(f)
 			self.read_data(data)
+		f.close()
 
 	#for each edge in data, edge is added to dictionary edges and
 	#dictionary adjs is updated with the nodes within edge
@@ -160,12 +160,14 @@ class Clustering:
 			writer = csv.writer(f)
 			for seed in self.all_clusters[iteration]:
 				writer.writerow(self.all_clusters[iteration][seed])
+		f.close()
 
 	def create_edge_list_csv(self, path):
 		with open(path,'w') as f:
 			writer = csv.writer(f)
 			for e in self.edges:
 				writer.writerow(e+(self.edges[e]["weight"],))
+		f.close()
 
 	#sorts nodes from highest to lowest node degree within the list L
 	def degree_sort(self):
@@ -301,5 +303,5 @@ class Clustering:
 		for n in self.adjs:
 			self.node_degrees[n] = self.adjs[n]["degree"]
 
-test = Clustering('data/zachary.csv')
-test.apply_alg(True)
+#test = Clustering('data/zachary.csv')
+#test.apply_alg(True)
